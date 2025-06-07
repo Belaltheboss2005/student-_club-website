@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+        }
+        header {
+            background-color: #0151a6;
+            color: white;
+            padding: 15px 20px;
+            text-align: center;
+            border-bottom: 2px solid #ccc;
+            position: relative;
+        }
+        header h1 {
+            margin: 0;
+            font-size: 2rem;
+        }
+        nav {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        nav ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+        }
+        nav ul li {
+            margin-left: 20px;
+        }
+        nav ul li a {
+            color: white;
+            text-decoration: none;
+            font-size: 1.1rem;
+            padding: 8px 15px;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        nav ul li a:hover {
+            background-color: #004a80;
+        }
+        nav button {
+            color: white;
+            background-color: #f44336; 
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s;
+        }
+        nav button:hover {
+            background-color: #d32f2f; 
+            transform: translateY(-2px);
+        }
+        nav button:active {
+            background-color: #b71c1c; 
+            transform: translateY(0);
+        }
+        .container {
+            padding: 20px;
+        }
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 10px 0;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .card h3 {
+            margin: 0;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        .error {
+            text-align: center;
+            margin-top: 50px;
+            color: red;
+            font-size: 1.5rem;
+        }
+        .rating-form-container {
+        padding: 20px;
+        background-color: #ffffff;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin-top: 10px;
+        }
+
+        .rating-form-container h3 {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+            color: #0151a6;
+        }
+
+        .rating-form-container label {
+            display: block;
+            font-size: 1rem;
+            margin-top: 10px;
+            color: #333;
+        }
+
+        .rating-form-container input,
+        .rating-form-container textarea {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            font-size: 1rem;
+        }
+
+        .rating-form-container input:focus,
+        .rating-form-container textarea:focus {
+            border-color: #0151a6;
+            outline: none;
+        }
+
+        .rating-form-container button {
+            margin-top: 15px;
+            padding: 10px 20px;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s ease, transform 0.2s;
+        }
+
+        .rating-form-container .submit-btn {
+            background-color: #4caf50;
+            color: white;
+        }
+
+        .rating-form-container .submit-btn:hover {
+            background-color: #388e3c;
+            transform: translateY(-2px);
+        }
+
+        .rating-form-container .submit-btn:active {
+            background-color: #2c6f29;
+            transform: translateY(0);
+        }
+
+        .rating-form-container .cancel-btn {
+            background-color: #f44336;
+            color: white;
+            margin-left: 10px;
+        }
+
+        .rating-form-container .cancel-btn:hover {
+            background-color: #d32f2f;
+            transform: translateY(-2px);
+        }
+
+        .rating-form-container .cancel-btn:active {
+            background-color: #b71c1c;
+            transform: translateY(0);
+        }
+        .rate-btn {
+            margin-top: 10px;
+            padding: 10px 20px;
+            background-color: #007bff; 
+            color: white;
+            font-size: 1rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s;
+        }
+
+        .rate-btn:hover {
+            background-color: #0056b3; 
+            transform: translateY(-2px);
+        }
+
+        .rate-btn:active {
+            background-color: #004085; 
+            transform: translateY(0);
+        }
+        
+        </style>
+   <script>
+    function showRateEventForm(eventId) {
+        const eventItem = document.querySelector(`#event-${eventId}`);
+        const ratingFormContainer = document.createElement("div");
+        ratingFormContainer.classList.add("card", "rating-form-container");
+
+        ratingFormContainer.innerHTML = `
+            <h3>Rate the Event</h3>
+            <label for="event-rating">Rating (1-5):</label>
+            <input type="number" id="event-rating" min="1" max="5" required><br>
+            <label for="event-comment">Comment:</label><br>
+            <textarea id="event-comment" required></textarea><br>
+            <button class="submit-btn" onclick="submitEventRating(${eventId})">Submit Rating</button>
+            <button class="cancel-btn" onclick="cancelRating(${eventId})">Cancel</button>
+        `;
+
+        eventItem.appendChild(ratingFormContainer);
+    }
+
+    function cancelRating(eventId) {
+        const ratingFormContainer = document.querySelector(`#event-${eventId} .rating-form-container`);
+        if (ratingFormContainer) {
+            ratingFormContainer.remove();
+        }
+    }
+
+    async function submitEventRating(eventId) {
+        const rating = document.getElementById("event-rating").value;
+        const comment = document.getElementById("event-comment").value;
+        const studentId = localStorage.getItem("id");
+
+        if (!rating || !comment) {
+            alert("Please provide both a rating and a comment.");
+            return;
+        }
+
+        try {
+            const response = await fetch(`http://127.0.0.1/student-club-website/CRUD/EVENT_ATTENDEE/readeventattendee.php?Student_ID=${studentId}`);
+            const attendantData = await response.json();
+
+            if (attendantData.status !== 200 || !attendantData.data || attendantData.data.length === 0) {
+                alert("You are not registered as an attendee for this event.");
+                return;
+            }
+
+            const attendantId = attendantData.data[0].Attendant_ID;
+
+            const ratingData = {
+                Event_eval: rating,
+                Event_comment: comment
+            };
+
+            const updateResponse = await fetch(`http://127.0.0.1/student-club-website/CRUD/EVENT_ATTENDEE/updateEventAttendee2.php?Attendant_ID=${attendantId}&Event_ID=${eventId}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(ratingData)
+            });
+
+            const result = await updateResponse.json();
+            if (result.status === 200) {
+                alert("Thank you for your feedback!");
+                cancelRating(eventId); 
+            } else {
+                alert("Error submitting your rating. Please try again.");
+            }
+        } catch (error) {
+            console.error("Error submitting rating:", error);
+            alert("Error submitting your rating. Please try again.");
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+                const role = localStorage.getItem("role");
+                const id = localStorage.getItem("id");
+                if (role !== "student" || !id) {
+                    document.body.innerHTML = '<div class="error">You have to be logged in as a student to access this page.</div>';
+                    return;
+                }
+                
+        async function fetchDashboardData() {
+            try {
+                const studentId = localStorage.getItem("id");
+                if (!studentId) {
+                    console.error("No student ID found in localStorage.");
+                    return;
+
+
+                const role = localStorage.getItem("role");
+                if (role !== "student") {
+                    document.body.innerHTML = '<div class="error">You have to be logged in as a student to access this page.</div>';
+                    return;
+                }
+                }
+
+                const studentResponse = await fetch(`http://127.0.0.1/student-club-website/CRUD/STUDENT/readStudent.php?Student_ID=${studentId}`);
+                const studentData = await studentResponse.json();
+
+                const studentDetails = studentData["data"];
+                if (!studentDetails || !studentDetails.Student_name) {
+                    console.error("No student data or student name found.");
+                    return;
+                }
+
+                const studentNameElement = document.getElementById("student-name");
+                if (studentNameElement) {
+                    studentNameElement.textContent = studentDetails["Student_name"];
+                } else {
+                    console.error("Element with ID 'student-name' not found!");
+                }
+
+                const membershipResponse = await fetch(`http://127.0.0.1/student-club-website/CRUD/CLUB_MEMBER/readclubmember.php?Student_ID=${studentId}`);
+                const membershipData = await membershipResponse.json();
+
+                let memberships = [];
+                if (membershipData.status === 200) {
+                    memberships = membershipData.data;
+                }
+
+                const eventResponse = await fetch("http://127.0.0.1/student-club-website/CRUD/EVENT/readevent.php");
+                const eventData = await eventResponse.json();
+
+                const attendeesResponse = await fetch(`http://127.0.0.1/student-club-website/CRUD/EVENT_ATTENDEE/readeventattendee.php?Student_ID=${studentId}`);
+                const attendeesData = await attendeesResponse.json();
+
+                const organizersResponse = await fetch(`http://127.0.0.1/student-club-website/CRUD/EVENT_ORGANIZER/readeventorganizer.php`);
+                const organizersData = await organizersResponse.json();
+
+                const clubResponse = await fetch("http://127.0.0.1/student-club-website/CRUD/CLUB/readClub.php");
+                const clubData = await clubResponse.json();
+
+                let clubs = {};
+                if (clubData.status === 200) {
+                    clubData.data.forEach(club => {
+                        clubs[club.Club_ID] = club.Club_name;
+                    });
+                }
+
+                if (eventData.status === 200) {
+                    const currentDate = new Date();
+                    const events = eventData.data;
+
+                    const signedUpEvents = events.filter(event => {
+                        const isAttendee = attendeesData.status === 200 && attendeesData.data.some(att => att.Event_ID === event.Event_ID);
+                        const isOrganizer = organizersData.status === 200 && organizersData.data.some(org => org.Event_ID === event.Event_ID && memberships.some(mem => mem.Membership_ID === org.Membership_ID));
+                        return isAttendee || isOrganizer;
+                    });
+
+                    const upcomingEvents = signedUpEvents.filter(event => new Date(event.Event_date) > currentDate);
+                    const pastEvents = signedUpEvents.filter(event => new Date(event.Event_date) <= currentDate);
+
+                    const upcomingEventsList = document.getElementById("upcoming-events");
+                    upcomingEvents.forEach(event => {
+
+                        const isMember = attendeesData.status === 200 && attendeesData.data.some(att => att.Student_ID === studentId && att.Event_ID === event.Event_ID)
+                                        || (organizersData.status === 200 && organizersData.data.some(org => org.Event_ID === event.Event_ID 
+                                            && memberships.some(mem => mem.Membership_ID === org.Membership_ID && mem.Student_ID === studentId)));
+                        if (!isMember) {
+                            return;
+                        }
+
+                        const eventItem = document.createElement("p");
+                        const isOrganizer = organizersData.status === 200 && organizersData.data.some(org => org.Event_ID === event.Event_ID && memberships.some(mem => mem.Membership_ID === org.Membership_ID));
+                        const role = isOrganizer ? "Organizer" : "Attendee";
+                        const clubName = clubs[event.Club_ID] || "Unknown Club";
+                        eventItem.textContent = `${event.Event_name} - ${new Date(event.Event_date).toLocaleDateString()} (${clubName}, ${role})`;
+                        upcomingEventsList.appendChild(eventItem);
+                    });
+
+                    const pastEventsList = document.getElementById("past-events");
+                    pastEvents.forEach(event => {
+                        const isMember = attendeesData.status === 200 && attendeesData.data.some(att => att.Student_ID === studentId && att.Event_ID === event.Event_ID)
+                                        || (organizersData.status === 200 && organizersData.data.some(org => org.Event_ID === event.Event_ID 
+                                            && memberships.some(mem => mem.Membership_ID === org.Membership_ID && mem.Student_ID === studentId)));
+
+                        if (!isMember) {
+                            return;
+                        }
+                        const eventItem = document.createElement("p");
+                        eventItem.id = `event-${event.Event_ID}`; 
+                        const isAttendee = attendeesData.status === 200 && attendeesData.data.some(att => att.Event_ID === event.Event_ID);
+                        const clubName = clubs[event.Club_ID] || "Unknown Club";
+                        if (isAttendee) {
+                            const rateButton = document.createElement("button");
+                            rateButton.classList.add("rate-btn");
+                            rateButton.textContent = "Rate the Event";
+                            rateButton.onclick = function() {
+                                showRateEventForm(event.Event_ID);
+                            };
+                            eventItem.textContent = `${event.Event_name} - ${new Date(event.Event_date).toLocaleDateString()} (${clubName}, Attendee) `;
+                            eventItem.appendChild(rateButton);
+                        } else {
+                            eventItem.textContent = `${event.Event_name} - ${new Date(event.Event_date).toLocaleDateString()} (${clubName}, Organizer)`;
+                        }
+                        pastEventsList.appendChild(eventItem);
+                    });
+                } else {
+                    document.getElementById("upcoming-events").textContent = "No upcoming events.";
+                    document.getElementById("past-events").textContent = "No past events.";
+                }
+            } catch (error) {
+                console.error("Error fetching dashboard data:", error);
+                document.getElementById("student-name").textContent = "Error";
+                document.getElementById("upcoming-events").textContent = "Error";
+                document.getElementById("past-events").textContent = "Error";
+            }
+        }
+
+        fetchDashboardData();
+    });
+
+    function logout() {
+            localStorage.clear();
+            window.location.href = "login.html";
+        }
+</script>
+
+    
+</head>
+<body>
+    <header>
+        <h1>Student Dashboard</h1>
+        <nav>
+            <ul>        
+                <li><a href="student_profile.html">Profile</a></li>
+                <li><a href="student_clubs.html">Clubs</a></li>
+                <li><a href="student_events.html">Events</a></li>
+                <li><button onclick="logout()">Logout</button></li>
+            </ul>
+        </nav>
+    </header>
+    <div class="container">
+        <div class="card">
+            <h2>Welcome, <span id="student-name"></span></h2>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <h3>Upcoming Events</h3>
+                <div id="upcoming-events"></div>
+            </div>
+            <div class="card">
+                <h3>Past Events</h3>
+                <div id="past-events"></div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

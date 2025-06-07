@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Club Members</title>
+    <link rel="stylesheet" href="admin_style.css">
+    <script>
+        async function deleteMember(memberID) {
+            const confirmed = window.confirm("Are you sure you want to delete this member?");
+            if (!confirmed) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`http://127.0.0.1/student-club-website/CRUD/CLUB_MEMBER/deleteClubMember.php?Membership_ID=${memberID}`, {
+                    method: "DELETE"
+                });
+
+                const data = await response.json();
+
+                if (data.status === 200) {
+                    window.location.reload();
+                } else {
+                    errorMessage.textContent = data.message || "Failed to delete member.";
+                }
+            } catch (error) {
+                console.error("Error deleting member:", error);
+                errorMessage.textContent = "Error deleting member.";
+            }
+        }
+
+        async function openEditModal(member) {
+            const membershipID = member.getAttribute("data-id");
+            try {
+                const response = await fetch(`http://127.0.0.1/student-club-website/CRUD/CLUB_MEMBER/readClubMember.php?Membership_ID=${membershipID}`);
+                const data = await response.json();
+
+                if (data.status === 200) {
+                    document.getElementById("edit_Membership_ID").value = data.data[0].Membership_ID;
+                    const studentSelect = document.getElementById("edit_Student_ID");
+                    studentSelect.value = data.data[0].Student_ID;
+                    document.getElementById("edit_Member_role").value = data.data[0].Member_role;
+
+                    document.getElementById("edit-member-modal").style.display = "block";
+                } else {
+                    alert("Failed to fetch member details.");
+                }
+            } catch (error) {
+                console.error("Error fetching member details:", error);
+                alert("Error fetching member details.");
+            }
+        }
+
+        async function updateMember(event) {
+            event.preventDefault();
+
+            const membershipID = document.getElementById("edit_Membership_ID").value;
+            const memberData = {
+                Club_ID: localStorage.getItem("clubID"),
+                Student_ID: document.getElementById("edit_Student_ID").value,
+                Member_role: document.getElementById("edit_Member_role").value
+            };
+
+            const membersTable = document.getElementById("members-table-body");
+            const existingMember = Array.from(membersTable.querySelectorAll("tr")).find(row => {
+                const cells = row.querySelectorAll("td");
+                return cells[1] && cells[1].textContent === memberData.Student_ID && cells[0].textContent !== membershipID;
+            });
+
+            if (existingMember) {
+                alert("This student is already a member of this club.");
+                return;
+            }
+
+            try {
+                const response = await fetch(`http://127.0.0.1/student-club-website/CRUD/CLUB_MEMBER/updateClubMember.php?Membership_ID=${membershipID}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(memberData)
+                });
+
+                const data = await response.json();
+
+                if (data.status === 200) {
+                    window.location.reload();
+                    document.getElementById("edit-member-modal").style.display = "none";
+                } else {
+                    alert(data.message || "Failed to update member.");
+                }
+            } catch (error) {
+                console.error("Error updating member:", error);
+                alert("Error updating member.");
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+            const clubID = localStorage.getItem("clubID");
+            const membersTable = document.getElementById("members-table-body");
+            const form = document.getElementById("member-form");
+            const errorMessage = document.getElementById("error-message");
+            const studentSelect = document.getElementById("Student_ID");
+            const editStudentSelect = document.getElementById("edit_Student_ID");
+
+            const role = localStorage.getItem("role");
+            if (role !== "admin") {
+                document.body.innerHTML = '<div class="error">You do not have valid authorization to access this page.</div>';
+                return;
+            }
+
+            if (!clubID) {
+                document.body.innerHTML = '<div class="error">No club selected. Please go back and select a club.</div>';
+                return;
+            }
+
+            async function fetchMembers() {
+                try {
+                    const response = await fetch(`http://127.0.0.1/student-club-website/CRUD/CLUB_MEMBER/readClubMember.php?Club_ID=${clubID}`);
+                    const data = await response.json();
+
+                    if (data.status === 200 && data.data.length > 0) {
+                        membersTable.innerHTML = "";
+                        data.data.forEach(member => {
+                            const row = document.createElement("tr");
+                            row.innerHTML = `
+                                <td>${member.Membership_ID}</td>
+                                <td>${member.Student_ID}</td>
+                                <td>${member.Member_role}</td>
+                                <td>
+                                    <button class="btn" data-id="${member.Membership_ID}" onclick="openEditModal(this)">Edit</button>
+                                    <button class="btn" onclick="deleteMember(${member.Membership_ID})">Delete</button>
+                                </td>
+                            `;
+                            membersTable.appendChild(row);
+                        });
+                        errorMessage.textContent = "";
+                    } else {
+                        membersTable.innerHTML = "";
+                        errorMessage.textContent = "No members found.";
+                    }
+                } catch (error) {
+                    console.error("Error fetching members:", error);
+                    errorMessage.textContent = "Error fetching members.";
+                }
+            }
+
+            async function fetchStudents() {
+                try {
+                    const response = await fetch("http://127.0.0.1/student-club-website/CRUD/STUDENT/readStudent.php");
+                    const data = await response.json();
+
+                    if (data.status === 200 && data.data.length > 0) {
+                        data.data.forEach(student => {
+                            const option = document.createElement("option");
+                            option.value = student.Student_ID;
+                            option.textContent = `${student.Student_ID} - ${student.Student_name}`;
+                            studentSelect.appendChild(option);
+
+                            const editOption = document.createElement("option");
+                            editOption.value = student.Student_ID;
+                            editOption.textContent = `${student.Student_ID} - ${student.Student_name}`;
+                            editStudentSelect.appendChild(editOption);
+                        });
+                    } else {
+                        const option = document.createElement("option");
+                        option.value = "";
+                        option.textContent = "No students available";
+                        studentSelect.appendChild(option);
+                        editStudentSelect.appendChild(option.cloneNode(true));
+                    }
+                } catch (error) {
+                    console.error("Error fetching students:", error);
+                }
+            }
+
+            async function addMember(event) {
+                event.preventDefault();
+
+                const formData = new FormData(form);
+                const memberData = Object.fromEntries(formData.entries());
+                memberData.Club_ID = clubID;
+
+                const existingMember = Array.from(membersTable.querySelectorAll("tr")).find(row => {
+                    const cells = row.querySelectorAll("td");
+                    return cells[1] && cells[1].textContent === memberData.Student_ID;
+                });
+
+                if (existingMember) {
+                    errorMessage.textContent = "Student is already a member of this club.";
+                    return;
+                }
+
+                try {
+                    const response = await fetch("http://127.0.0.1/student-club-website/CRUD/CLUB_MEMBER/createClubMember.php", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(memberData)
+                    });
+
+                    const data = await response.json();
+
+                    if (data.status === 201) {
+                        fetchMembers();
+                    } else {
+                        errorMessage.textContent = data.message || "Failed to add member.";
+                    }
+                } catch (error) {
+                    console.error("Error adding member:", error);
+                    errorMessage.textContent = "Error adding member.";
+                }
+            }
+
+            form.addEventListener("submit", addMember);
+            fetchMembers();
+            fetchStudents();
+
+            document.getElementById("edit-member-form").addEventListener("submit", updateMember);
+        });
+    </script>
+</head>
+<body>
+    <header>
+        <h1>Manage Club Members</h1>
+        <nav>
+            <a href="manage_clubs.html">Back to Clubs</a>
+        </nav>
+    </header>
+    <div class="container">
+        <h2>Club Members</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Membership ID</th>
+                    <th>Student ID</th>
+                    <th>Role</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="members-table-body">
+            </tbody>
+        </table>
+
+        <h2>Add Member</h2>
+        <form id="member-form">
+            <div class="form-group">
+                <label for="Student_ID">Student:</label>
+                <select id="Student_ID" name="Student_ID" required>
+                    <option value="" disabled selected>Select Student</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="Member_role">Role:</label>
+                <select id="Member_role" name="Member_role" required>
+                    <option value="" disabled selected>Select Role</option>
+                    <option value="president">President</option>
+                    <option value="vice president">Vice President</option>
+                    <option value="member">Member</option>
+                </select>
+            </div>
+            <button type="submit" class="btn">Add Member</button>
+        </form>
+
+        <div id="edit-member-modal" style="display:none;">
+            <form id="edit-member-form">
+                <input type="hidden" id="edit_Membership_ID">
+                <div class="form-group">
+                    <label for="edit_Student_ID">Student:</label>
+                    <select id="edit_Student_ID" name="Student_ID" required>
+                        <option value="" disabled selected>Select Student</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="edit_Member_role">Role:</label>
+                    <select id="edit_Member_role" name="Member_role" required>
+                        <option value="" disabled>Select Role</option>
+                        <option value="president">President</option>
+                        <option value="vice president">Vice President</option>
+                        <option value="member">Member</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn">Update Member</button>
+            </form>
+        </div>
+
+        <div id="error-message" class="error"></div>
+    </div>
+</body>
+</html>

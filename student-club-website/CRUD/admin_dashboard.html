@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+        }
+        header {
+            background-color: #0151a6;
+            color: white;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        header h1 {
+            margin: 0;
+        }
+        nav {
+            display: flex;
+            gap: 15px;
+        }
+        nav a, nav button {
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+            font-size: 1rem;
+        }
+        nav a:hover, nav button:hover {
+            text-decoration: underline;
+        }
+        
+
+        .container {
+            padding: 20px;
+        }
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 10px 0;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .card h3 {
+            margin: 0;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        .error {
+            text-align: center;
+            margin-top: 50px;
+            color: red;
+            font-size: 1.5rem;
+        }
+        nav button {
+    color: white;
+    background-color: #f44336; /* Red color for logout */
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s;
+}
+
+nav button:hover {
+    background-color: #d32f2f; /* Darker red on hover */
+    transform: translateY(-2px);
+}
+
+nav button:active {
+    background-color: #b71c1c; /* Even darker red on active click */
+    transform: translateY(0);
+}
+    </style>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const role = localStorage.getItem("role");
+            if (role !== "admin") {
+                document.body.innerHTML = '<div class="error">You do not have valid authorization to access this page.</div>';
+                return;
+            }
+
+            async function fetchMetrics() {
+                try {
+                    const studentResponse = await fetch("http://127.0.0.1/student-club-website/CRUD/STUDENT/readStudent.php");
+                    const studentData = await studentResponse.json();
+                    if (studentData.status === 200) {
+                        document.getElementById("total-students").textContent = studentData.data.length;
+                    } else {
+                        document.getElementById("total-students").textContent = 0;
+                    }
+
+                    const clubResponse = await fetch("http://127.0.0.1/student-club-website/CRUD/CLUB/readClub.php");
+                    const clubData = await clubResponse.json();
+                    if (clubData.status === 200) {
+                        document.getElementById("total-clubs").textContent = clubData.data.length;
+                    } else {
+                        document.getElementById("total-clubs").textContent = 0;
+                    }
+
+                    const eventResponse = await fetch("http://127.0.0.1/student-club-website/CRUD/EVENT/readevent.php");
+                    const eventData = await eventResponse.json();
+                    if (eventData.status === 200) {
+                        const currentDate = new Date();
+                        const upcomingEvents = eventData.data.filter(event => new Date(event.Event_date) > currentDate);
+                        const pastEvents = eventData.data.filter(event => new Date(event.Event_date) <= currentDate);
+                        document.getElementById("upcoming-events").textContent = upcomingEvents.length;
+                        document.getElementById("past-events").textContent = pastEvents.length;
+                    } else {
+                        document.getElementById("upcoming-events").textContent = 0;
+                        document.getElementById("past-events").textContent = 0;
+                    }
+                } catch (error) {
+                    console.error("Error fetching metrics:", error);
+                    document.getElementById("total-students").textContent = "Error";
+                    document.getElementById("total-clubs").textContent = "Error";
+                    document.getElementById("upcoming-events").textContent = "Error";
+                    document.getElementById("past-events").textContent = "Error";
+                }
+            }
+
+            fetchMetrics();
+        });
+
+        function addAdmin() {
+            window.location.href = "add_admin.html";
+        }
+
+        function logout() {
+            localStorage.clear();
+            window.location.href = "login.html";
+        }
+    </script>
+</head>
+<body>
+    <header>
+        <h1>Admin Dashboard</h1>
+        <nav>
+            <a href="admin_dashboard.html">Dashboard</a>
+            <a href="manage_students.html">Manage Students</a>
+            <a href="manage_clubs.html">Manage Clubs</a>
+            <a href="manage_events.html">Manage Events</a>
+            
+            <button onclick="addAdmin()">Add Admin</button>
+            <button onclick="logout()">Logout</button>
+        </nav>
+    </header>
+    <div class="container">
+        <div class="card">
+            <h2>Welcome, Admin!</h2>
+            <p>Use the navigation bar to manage the system.</p>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <h3>Total Students</h3>
+                <p id="total-students">Loading...</p>
+            </div>
+            <div class="card">
+                <h3>Total Clubs</h3>
+                <p id="total-clubs">Loading...</p>
+            </div>
+            <div class="card">
+                <h3>Upcoming Events</h3>
+                <p id="upcoming-events">Loading...</p>
+            </div>
+            <div class="card">
+                <h3>Past Events</h3>
+                <p id="past-events">Loading...</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Registration</title>
+    <link rel="stylesheet" href="admin_style.css">
+    <style>
+        /* Style for the header and return link to match */
+        header h1, .return-login {
+            font-family: Arial, sans-serif;
+            font-weight: bold;
+            font-size: 16px;
+            color: white;
+        }
+
+        /* Position the "Return to Login" link in the top-right corner */
+        .return-login {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            text-decoration: none;
+        }
+
+        .return-login:hover {
+            text-decoration: underline;
+        }
+    </style>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const form = document.getElementById("registration-form");
+            const errorMessage = document.getElementById("error-message");
+
+            async function registerStudent(event) {
+                event.preventDefault();
+
+                const formData = new FormData(form);
+                const studentData = Object.fromEntries(formData.entries());
+
+                try {
+                    const response = await fetch("http://127.0.0.1/student-club-website/CRUD/STUDENT/createStudent.php", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(studentData)
+                    });
+
+                    const data = await response.json();
+
+                    if (data.status === 201) {
+                        alert("Registration successful!");
+                        form.reset();
+                        errorMessage.textContent = "";
+                        window.location.href = "login.html";
+                    } else {
+                        errorMessage.textContent = data.message || "Failed to register.";
+                    }
+                } catch (error) {
+                    console.error("Error registering student:", error);
+                    errorMessage.textContent = "Error registering student.";
+                }
+            }
+
+            form.addEventListener("submit", registerStudent);
+        });
+    </script>
+</head>
+<body>
+    <a href="login.html" class="return-login">Return to Login</a>
+
+    <header>
+        <h1>Student Registration</h1>
+    </header>
+
+    <div class="container">
+        <h2>Register as a Student</h2>
+        <form id="registration-form">
+            <div class="form-group">
+                <label for="Student_name">Name:</label>
+                <input type="text" id="Student_name" name="Student_name" placeholder="Enter your name" required>
+            </div>
+            <div class="form-group">
+                <label for="Student_username">Username:</label>
+                <input type="text" id="Student_username" name="Student_username" placeholder="Enter a username" required>
+            </div>
+            <div class="form-group">
+                <label for="Student_img">Image URL:</label>
+                <input type="text" id="Student_img" name="Student_img" placeholder="Upload on drive and enter the URL">
+            </div>
+            <div class="form-group">
+                <label for="Student_phone">Phone:</label>
+                <input type="text" id="Student_phone" name="Student_phone" required maxlength="11" 
+                       pattern="^\d{11}$" title="Phone number must be exactly 11 digits" placeholder="Enter 11-digit phone number">
+            </div>
+            <div class="form-group">
+                <label for="Student_year">Year:</label>
+                <select id="Student_year" name="Student_year" required>
+                    <option value="" disabled selected>Select Year</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="Student_pass">Password:</label>
+                <input type="password" id="Student_pass" name="Student_pass" placeholder="Enter a password" required>
+            </div>
+            <button type="submit" class="btn">Register</button>
+        </form>
+
+        <div id="error-message" class="error"></div>
+    </div>
+</body>
+</html>

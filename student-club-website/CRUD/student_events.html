@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>All Events</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f4f4f9;
+      }
+      header {
+        background-color: #0151a6;
+        color: white;
+        padding: 15px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 2px solid #ccc;
+        position: relative;
+      }
+      header h1 {
+        margin: 0;
+        font-size: 2rem;
+      }
+      nav {
+        display: flex;
+        align-items: center;
+      }
+      nav ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+      }
+      nav ul li {
+        margin-left: 20px;
+      }
+      nav ul li a {
+        color: white;
+        text-decoration: none;
+        font-size: 1.1rem;
+        padding: 8px 15px;
+        border-radius: 5px;
+        transition: background-color 0.3s;
+      }
+      nav ul li a:hover {
+        background-color: #004a80;
+      }
+      .logout-btn {
+        background-color: #d9534f;
+        color: white;
+        border: none;
+        padding: 10px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: bold;
+        margin-left: 20px;
+      }
+      .logout-btn:hover {
+        background-color: #c9302c;
+      }
+      .container {
+        padding: 20px;
+      }
+      .card {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 10px 0;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+      .card h3 {
+        margin: 0;
+      }
+      .search-bar {
+        margin-bottom: 20px;
+      }
+      .search-bar input {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 1rem;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+      }
+      .event-item {
+        padding: 15px;
+        background-color: #ffffff;
+        border-radius: 6px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+      .event-item h4 {
+        margin: 0 0 10px;
+      }
+      .event-item p {
+        margin: 5px 0;
+      }
+      .error {
+        text-align: center;
+        margin-top: 50px;
+        color: red;
+        font-size: 1.5rem;
+      }
+      .register-btn {
+        background-color: #0151a6;
+        color: white;
+        border: none;
+        padding: 10px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: bold;
+        margin-top: 10px;
+      }
+      .register-btn:hover {
+        background-color: #062d56;
+      }
+    </style>
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+
+            const role = localStorage.getItem("role");
+            const id = localStorage.getItem("id");
+                if (role !== "student" || !id) {
+                    document.body.innerHTML = '<div class="error">You have to be logged in as a student to access this page.</div>';
+                    return;
+                }
+
+          const upcomingEventList = document.getElementById("upcoming-events");
+          const pastEventList = document.getElementById("past-events");
+          const searchInput = document.getElementById("search-bar");
+
+
+          function filterEvents() {
+              const searchQuery = searchInput.value.toLowerCase();
+
+              document.querySelectorAll(".event-item").forEach(item => {
+                  const text = item.textContent.toLowerCase();
+                  if (text.includes(searchQuery)) {
+                      item.style.display = "block";
+                  } else {
+                      item.style.display = "none";
+                  }
+              });
+          }
+
+          searchInput.addEventListener("input", filterEvents);
+
+          async function fetchAllEvents() {
+              try {
+                  const studentId = localStorage.getItem("id");
+                  if (!studentId) {
+                      alert("Student ID not found. Please log in again.");
+                      return;
+                  }
+
+                  const membershipResponse = await fetch(`http://127.0.0.1/student-club-website/CRUD/CLUB_MEMBER/readclubmember.php?Student_ID=${studentId}`);
+                  const membershipData = await membershipResponse.json();
+                  const memberships = membershipData.status === 200 ? membershipData.data : [];
+
+                  const attendeeResponse = await fetch(`http://127.0.0.1/student-club-website/CRUD/EVENT_ATTENDEE/readeventattendee.php?Student_ID=${studentId}`);
+                  const attendeeData = await attendeeResponse.json();
+
+                  const organizerResponse = await fetch(`http://127.0.0.1/student-club-website/CRUD/EVENT_ORGANIZER/readeventorganizer.php`);
+                  const organizerData = await organizerResponse.json();
+
+                  const eventResponse = await fetch("http://127.0.0.1/student-club-website/CRUD/EVENT/readevent.php");
+                  const eventData = await eventResponse.json();
+
+                  if (eventData.status === 200) {
+                      const currentDate = new Date();
+                      const events = eventData.data;
+                      const upcomingEvents = events.filter(event => new Date(event.Event_date) > currentDate);
+                      const pastEvents = events.filter(event => new Date(event.Event_date) <= currentDate);
+
+                      const upcomingEventList = document.getElementById("upcoming-events");
+                      const pastEventList = document.getElementById("past-events");
+
+                      upcomingEvents.forEach(event => {
+                          const eventItem = document.createElement("div");
+                          eventItem.classList.add("event-item");
+
+                          const isAttendee = attendeeData.status === 200 && attendeeData.data.some(att => att.Event_ID === event.Event_ID);
+                          const isOrganizer = organizerData.status === 200 && organizerData.data.some(org => org.Event_ID === event.Event_ID &&  memberships.some(mem => mem.Membership_ID === org.Membership_ID && mem.Student_ID === studentId));
+                          const isRegistered = isAttendee || isOrganizer;
+
+                          const role = isOrganizer ? "Organizer" : "Attendee";
+
+                          eventItem.innerHTML = `
+                              <h4>${event.Event_name}</h4>
+                              <p><strong>Event Description:</strong> ${event.Event_description}</p>
+                              <p><strong>Date:</strong> ${new Date(event.Event_date).toLocaleDateString()}</p>
+                              <button class="register-btn" ${isRegistered ? "disabled style='background-color: grey; color: white; cursor: not-allowed;'" : ""} data-role="${role}" onclick="registerForEvent(${event.Event_ID})">${isRegistered ? "Registered as " + role : "Register"}</button>
+                          `;
+
+                          upcomingEventList.appendChild(eventItem);
+                      });
+
+                      pastEvents.forEach(event => {
+
+                          const eventItem = document.createElement("div");
+                          eventItem.classList.add("event-item");
+
+                          eventItem.innerHTML = `
+                              <h4>${event.Event_name}</h4>
+                              <p><strong>Event Description:</strong> ${event.Event_description}</p>
+                              <p><strong>Date:</strong> ${new Date(event.Event_date).toLocaleDateString()}</p>
+                          `;
+
+                          pastEventList.appendChild(eventItem);
+                      });
+                  } else {
+                      document.getElementById("upcoming-events").textContent = "No upcoming events.";
+                      document.getElementById("past-events").textContent = "No past events.";
+                  }
+              } catch (error) {
+                  console.error("Error fetching event data:", error);
+                  document.getElementById("upcoming-events").textContent = "Error loading events.";
+                  document.getElementById("past-events").textContent = "Error loading events.";
+              }
+          }
+
+          window.registerForEvent = async function registerForEvent(eventId) {
+              try {
+                  const studentId = localStorage.getItem("id");
+
+                  if (!studentId) {
+                      alert("Student ID not found. Please log in again.");
+                      return;
+                  }
+
+                  const eventResponse = await fetch(`http://127.0.0.1/student-club-website/CRUD/EVENT/readevent.php?Event_ID=${eventId}`);
+                  const eventData = await eventResponse.json();
+
+                  if (eventData.status !== 200 || !eventData.data.length) {
+                      alert("Event not found.");
+                      return;
+                  }
+
+                  const clubId = eventData.data[0].Club_ID;
+
+                  const memberResponse = await fetch(`http://127.0.0.1/student-club-website/CRUD/CLUB_MEMBER/readclubmember.php?Club_ID=${clubId}&Student_ID=${studentId}`);
+                  const memberData = await memberResponse.json();
+
+                  if (memberData.status === 200 && memberData.data.length) {
+                      const membershipId = memberData.data[0].Membership_ID;
+
+                      const registrationData = {
+                          Event_ID: eventId,
+                          Membership_ID: membershipId
+                      };
+
+                      const response = await fetch("http://127.0.0.1/student-club-website/CRUD/EVENT_ORGANIZER/createEventOrganizer.php", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify(registrationData)
+                      });
+
+                      const data = await response.json();
+
+                      if (data.status === 201) {
+                          alert("Successfully registered as an Organizer!");
+                          location.reload();
+                      } else {
+                          alert("Registration failed: " + (data.message || "Unknown error."));
+                      }
+                  } else {
+                      const registrationData = {
+                          Event_ID: eventId,
+                          Student_ID: studentId,
+                          Event_eval: "N/A",
+                          Event_comment: "N/A"
+                      };
+
+                      const response = await fetch("http://127.0.0.1/student-club-website/CRUD/EVENT_ATTENDEE/createEventAttendee.php", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify(registrationData)
+                      });
+
+                      const data = await response.json();
+
+                      if (data.status === 201) {
+                          alert("Successfully registered as an Attendee!");
+                          location.reload();
+                      } else {
+                          alert("Registration failed: " + (data.message || "Unknown error."));
+                      }
+                  }
+              } catch (error) {
+                  console.error("Error registering for event:", error);
+                  alert("Error registering for event.");
+              }
+          };
+
+
+
+          fetchAllEvents();
+      });
+      function logout() {
+          localStorage.clear();
+          window.location.href = "login.html";
+      }
+    </script>
+  </head>
+  <body>
+    <header>
+      <h1>All Events</h1>
+      <nav>
+        <ul>
+          <li><a href="student_dashboard.html">Dashboard</a></li>
+          <li><a href="student_profile.html">Profile</a></li>
+          <li><a href="student_clubs.html">Clubs</a></li>
+          <li>
+            <button id="logout-btn" class="logout-btn" onclick="logout()">
+              Logout
+            </button>
+          </li>
+        </ul>
+      </nav>
+    </header>
+    <div class="container">
+      <div class="search-bar">
+        <input id="search-bar" type="text" placeholder="Search events..." />
+      </div>
+      <div class="card">
+        <h2>Upcoming Events</h2>
+        <div id="upcoming-events"></div>
+      </div>
+
+      <div class="card">
+        <h2>Past Events</h2>
+        <div id="past-events"></div>
+      </div>
+    </div>
+  </body>
+</html>

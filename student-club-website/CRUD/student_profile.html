@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Profile</title>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const role = localStorage.getItem("role");
+            const id = localStorage.getItem("id");
+                if (role !== "student" || !id) {
+                    document.body.innerHTML = '<div class="error">You have to be logged in as a student to access this page.</div>';
+                    return;
+                }
+
+            async function fetchStudentData(studentID) {
+                try {
+                    const response = await fetch(`http://127.0.0.1/student-club-website/CRUD/STUDENT/readStudent.php?Student_ID=${studentID}`);
+                    const data = await response.json();
+
+                    if (data.status === 200) {
+                        document.getElementById("student-photo").src = data.data.Student_img;
+                        document.getElementById("student-name").textContent = data.data.Student_name;
+                        document.getElementById("student-username").textContent = `Username: ${data.data.Student_username}`;
+                        document.getElementById("student-phone").textContent = `Phone: ${data.data.Student_phone}`;
+                        document.getElementById("student-year").textContent = `Year: ${data.data.Student_year}`;
+                    } else {
+                        alert("Failed to load student data.");
+                    }
+                } catch (error) {
+                    console.error("Error fetching student data:", error);
+                    alert("Error fetching student data.");
+                }
+            }
+
+            const studentID = localStorage.getItem("id");
+
+            if (studentID) {
+                fetchStudentData(studentID);
+            } else {
+                alert("Student ID is missing.");
+            }
+
+            async function deleteStudent(studentID) {
+                const confirmed = window.confirm("Are you sure you want to delete this student?");
+                if (!confirmed) {
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`http://127.0.0.1/student-club-website/CRUD/STUDENT/deleteStudent.php?Student_ID=${studentID}`, {
+                        method: "DELETE"
+                    });
+
+                    const data = await response.json();
+
+                    if (data.status === 200) {
+                        window.location.reload();
+                    } else {
+                        errorMessage.textContent = data.message || "Failed to delete student.";
+                    }
+                } catch (error) {
+                    console.error("Error deleting student:", error);
+                    errorMessage.textContent = "Error deleting student.";
+                }
+            }
+
+            async function openEditModal(student) {
+                const studentID = student.getAttribute("data-id");
+                try {
+                    const response = await fetch(`http://127.0.0.1/student-club-website/CRUD/STUDENT/readStudent.php?Student_ID=${studentID}`);
+                    const data = await response.json();
+
+                    if (data.status === 200) {
+                        document.getElementById("edit_Student_ID").value = data.data.Student_ID;
+                        document.getElementById("edit_Student_name").value = data.data.Student_name;
+                        document.getElementById("edit_Student_username").value = data.data.Student_username;
+                        document.getElementById("edit_Student_img").value = data.data.Student_img;
+                        document.getElementById("edit_Student_phone").value = data.data.Student_phone;
+                        document.getElementById("edit_Student_year").value = data.data.Student_year;
+                        document.getElementById("edit_Student_pass").value = data.data.Student_pass;
+
+                        document.getElementById("edit-student-modal").style.display = "block";
+                    } else {
+                        alert("Failed to fetch student details.");
+                    }
+                } catch (error) {
+                    console.error("Error fetching student details:", error);
+                    alert("Error fetching student details.");
+                }
+            }
+
+            async function updateStudent(event) {
+                event.preventDefault();
+
+                const studentID = document.getElementById("edit_Student_ID").value;
+                const studentData = {
+                    Student_name: document.getElementById("edit_Student_name").value,
+                    Student_username: document.getElementById("edit_Student_username").value,
+                    Student_img: document.getElementById("edit_Student_img").value,
+                    Student_phone: document.getElementById("edit_Student_phone").value,
+                    Student_year: document.getElementById("edit_Student_year").value,
+                    Student_pass: document.getElementById("edit_Student_pass").value
+                };
+
+                try {
+                    const response = await fetch(`http://127.0.0.1/student-club-website/CRUD/STUDENT/updateStudent.php?Student_ID=${studentID}`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(studentData)
+                    });
+
+                    const data = await response.json();
+
+                    if (data.status === 200) {
+                        window.location.reload();
+                    } else {
+                        alert(data.message || "Failed to update student.");
+                    }
+                } catch (error) {
+                    console.error("Error updating student:", error);
+                    alert("Error updating student.");
+                }
+            }
+
+            const form = document.getElementById("student-form");
+            form.addEventListener("submit", addStudent);
+
+            async function addStudent(event) {
+                event.preventDefault();
+
+                const formData = new FormData(form);
+                const studentData = Object.fromEntries(formData.entries());
+
+                try {
+                    const response = await fetch("http://127.0.0.1/student-club-website/CRUD/STUDENT/createStudent.php", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(studentData)
+                    });
+
+                    const data = await response.json();
+
+                    if (data.status === 201) {
+                        window.location.reload();
+                    } else {
+                        errorMessage.textContent = data.message || "Failed to add student.";
+                    }
+                } catch (error) {
+                    console.error("Error adding student:", error);
+                    errorMessage.textContent = "Error adding student.";
+                }
+            }
+        });
+        function logout() {
+        localStorage.clear();
+        window.location.href = "login.html";
+    }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+            color: #333;
+        }
+
+        header {
+            background-color: #0151a6;
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #ccc;
+            position: relative;
+        }
+        header h1 {
+    margin: 0;
+    font-size: 2rem;
+}
+        nav {
+            display: flex;
+            align-items: center;
+        }
+        nav ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+        }
+        nav ul li {
+            margin-left: 20px;
+        }
+        nav ul li a {
+            color: white;
+            text-decoration: none;
+            font-size: 1.1rem;
+            padding: 8px 15px;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        nav ul li a:hover {
+            background-color: #004a80;
+        }
+        .logout-btn {
+            background-color: #d9534f;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-left: 20px;
+        }
+        .logout-btn {
+            background-color: #d9534f;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-left: 20px;
+        }
+        .logout-btn:hover {
+            background-color: #c9302c;
+        }
+        .container {
+            padding: 20px;
+        }
+ 
+
+        .profile-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 8px;
+            background-color: white;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 80%;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .profile-container img {
+            width: 150px;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 50%;
+            margin-bottom: 20px;
+        }
+
+        .profile-container h2 {
+            margin: 0;
+            font-size: 1.5rem;
+            color: #0151a6;
+        }
+
+        .profile-container p {
+            font-size: 1.1rem;
+            color: #333;
+            margin: 5px 0;
+        }
+
+        .error {
+            text-align: center;
+            margin-top: 50px;
+            color: red;
+            font-size: 1.5rem;
+        }
+        nav {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            background-color: #0151a6;
+            padding: 10px 0;
+        }
+        nav a {
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+            padding: 5px 10px;
+            transition: background-color 0.3s ease;
+        }
+        nav a:hover {
+            text-decoration: underline;
+            background-color: #013d7d;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Student Profile</h1>
+        <nav>
+            <ul>
+                <li><a href="student_dashboard.html">Dashboard</a></li>
+                <li><a href="student_clubs.html">Clubs</a></li>
+                <li><a href="student_events.html">Events</a></li>
+                <li > <button class="logout-btn" onclick="logout()">Logout</button></li>
+            </ul>
+        </nav>
+    </header>
+    <div class="profile-container">
+        <img id="student-photo" src="default-profile.png" alt="Profile image">
+        <h2 id="student-name"></h2>
+        <p id="student-username"></p>
+        <p id="student-phone"></p>
+        <p id="student-year"></p>
+    </div>
+</body>
+</html>

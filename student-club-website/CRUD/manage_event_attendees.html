@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Event Attendees</title>
+    <link rel="stylesheet" href="admin_style.css">
+    <script>
+    async function fetchStudentName(studentID) {
+        try {
+            const response = await fetch(`http://127.0.0.1/student-club-website/CRUD/STUDENT/readstudent.php?Student_ID=${studentID}`);
+            const data = await response.json();
+
+            if (data.status === 200) {
+                return data.data.Student_name;
+            }
+        } catch (error) {
+            console.error("Error fetching student name:", error);
+        }
+        return "Unknown";
+    }
+
+    async function fetchStudents() {
+        const studentSelect = document.getElementById("Student_ID");
+        try {
+            const response = await fetch("http://127.0.0.1/student-club-website/CRUD/STUDENT/readstudent.php");
+            const data = await response.json();
+
+            if (data.status === 200 && data.data.length > 0) {
+                data.data.forEach(student => {
+                    const option = document.createElement("option");
+                    option.value = student.Student_ID;
+                    option.textContent = `${student.Student_ID} - ${student.Student_name}`;
+                    studentSelect.appendChild(option);
+                });
+            } else {
+                const option = document.createElement("option");
+                option.value = "";
+                option.textContent = "No students available";
+                studentSelect.appendChild(option);
+            }
+        } catch (error) {
+            console.error("Error fetching students:", error);
+        }
+    }
+
+    async function addAttendee(event) {
+        event.preventDefault();
+
+        const form = document.getElementById("attendee-form");
+        const formData = new FormData(form);
+        const attendeeData = Object.fromEntries(formData.entries());
+
+        // ensure there aren't duplicate attendees for the same event and student
+
+        try {
+            const response = await fetch("http://127.0.0.1/student-club-website/CRUD/EVENT_ATTENDEE/createEventAttendee.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(attendeeData)
+            });
+
+            const data = await response.json();
+
+            if (data.status === 201) {
+                window.location.reload();
+            } else {
+                const errorMessage = document.getElementById("error-message");
+                errorMessage.textContent = data.message || "Failed to add attendee.";
+            }
+        } catch (error) {
+            console.error("Error adding attendee:", error);
+            const errorMessage = document.getElementById("error-message");
+            errorMessage.textContent = "Error adding attendee.";
+        }
+    }
+
+    async function deleteAttendee(attendeeID) {
+        const confirmed = window.confirm("Are you sure you want to delete this attendee?");
+        if (!confirmed) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`http://127.0.0.1/student-club-website/CRUD/EVENT_ATTENDEE/deleteEventAttendee.php?Attendant_ID=${attendeeID}`, {
+                method: "DELETE"
+            });
+
+            const data = await response.json();
+
+            if (data.status === 200) {
+                window.location.reload();
+            } else {
+                const errorMessage = document.getElementById("error-message");
+                errorMessage.textContent = data.message || "Failed to delete attendee.";
+            }
+        } catch (error) {
+            console.error("Error deleting attendee:", error);
+            const errorMessage = document.getElementById("error-message");
+            errorMessage.textContent = "Error deleting attendee.";
+        }
+    }
+
+    async function openEditModal(attendee) {
+        const attendeeID = attendee.getAttribute("data-id");
+        try {
+            const response = await fetch(`http://127.0.0.1/student-club-website/CRUD/EVENT_ATTENDEE/readEventAttendee.php?Attendant_ID=${attendeeID}`);
+            const data = await response.json();
+
+            if (data.status === 200) {
+                // data has to be called with array index 0 (these for some reason are in an array)
+                document.getElementById("edit_Attendant_ID").value = data.data[0].Attendant_ID;
+                document.getElementById("edit_Event_eval").value = data.data[0].Event_eval;
+                document.getElementById("edit_Event_comment").value = data.data[0].Event_comment;
+
+                document.getElementById("edit-attendee-modal").style.display = "block";
+            } else {
+                alert("Failed to fetch attendee details.");
+            }
+        } catch (error) {
+            console.error("Error fetching attendee details:", error);
+            alert("Error fetching attendee details.");
+        }
+    }
+
+    async function updateAttendee(event) {
+        event.preventDefault();
+
+        const attendeeID = document.getElementById("edit_Attendant_ID").value;
+        const attendeeData = {
+            Event_eval: document.getElementById("edit_Event_eval").value,
+            Event_comment: document.getElementById("edit_Event_comment").value
+        };
+
+        try {
+            const response = await fetch(`http://127.0.0.1/student-club-website/CRUD/EVENT_ATTENDEE/updateEventAttendee2.php?Attendant_ID=${attendeeID}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(attendeeData)
+            });
+
+            const data = await response.json();
+
+            if (data.status === 200) {
+                window.location.reload();
+            } else {
+                alert(data.message || "Failed to update attendee.");
+            }
+        } catch (error) {
+            console.error("Error updating attendee:", error);
+            alert("Error updating attendee.");
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        const eventID = localStorage.getItem("eventID");
+        const attendeesTable = document.getElementById("attendees-table-body");
+        const errorMessage = document.getElementById("error-message");
+        const form = document.getElementById("attendee-form");
+
+        async function fetchAttendees() {
+
+            const role = localStorage.getItem("role");
+            if (role !== "admin") {
+                document.body.innerHTML = '<div class="error">You do not have valid authorization to access this page.</div>';
+                return;
+            }
+            
+            try {
+                const response = await fetch(`http://127.0.0.1/student-club-website/CRUD/EVENT_ATTENDEE/readEventAttendee.php?Event_ID=${eventID}`);
+                const data = await response.json();
+
+                if (data.status === 200 && data.data.length > 0) {
+                    attendeesTable.innerHTML = "";
+                    data.data.forEach(async attendee => {
+                        const studentName = await fetchStudentName(attendee.Student_ID);
+                        const row = document.createElement("tr");
+                        row.innerHTML = `
+                            <td>${attendee.Attendant_ID}</td>
+                            <td>${studentName}</td>
+                            <td>${attendee.Event_eval || "N/A"}</td>
+                            <td>${attendee.Event_comment || "N/A"}</td>
+                            <td>
+                                <button class="btn" data-id="${attendee.Attendant_ID}" onclick="openEditModal(this)">Edit</button>
+                                <button class="btn" onclick="deleteAttendee(${attendee.Attendant_ID})">Delete</button>
+                            </td>
+                        `;
+                        attendeesTable.appendChild(row);
+                    });
+                    errorMessage.textContent = "";
+                } else {
+                    attendeesTable.innerHTML = "";
+                    errorMessage.textContent = "No attendees found.";
+                }
+            } catch (error) {
+                console.error("Error fetching attendees:", error);
+                errorMessage.textContent = "Error fetching attendees.";
+            }
+        }
+
+        form.addEventListener("submit", addAttendee);
+        fetchAttendees();
+        fetchStudents();
+
+        const editForm = document.getElementById("edit-attendee-form");
+        editForm.addEventListener("submit", updateAttendee);
+    });
+    </script>
+</head>
+<body>
+    <header>
+        <h1>Manage Event Attendees</h1>
+        <nav>
+            <a href="manage_events.html">Back to Events</a>
+        </nav>
+    </header>
+    <div class="container">
+        <h2>Attendee List</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Student Name</th>
+                    <th>Evaluation</th>
+                    <th>Comments</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="attendees-table-body">
+            </tbody>
+        </table>
+
+        <h2>Add Attendee</h2>
+        <form id="attendee-form">
+            <input type="hidden" id="Event_ID" name="Event_ID" value="" />
+            <script>
+                const eventID = localStorage.getItem("eventID");
+                document.getElementById("Event_ID").value = eventID;
+            </script>
+            <div class="form-group">
+                <label for="Student_ID">Student:</label>
+                <select id="Student_ID" name="Student_ID" required>
+                    <option value="" disabled selected>Select Student</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="Event_eval">Evaluation:</label>
+                <input type="number" id="Event_eval" name="Event_eval" min="1" max="5">
+            </div>
+            <div class="form-group">
+                <label for="Event_comment">Comments:</label>
+                <textarea id="Event_comment" name="Event_comment"></textarea>
+            </div>
+            <button type="submit" class="btn">Add Attendee</button>
+        </form>
+
+        <h2>Edit Attendee</h2>
+        <div id="edit-attendee-modal" style="display:none;">
+            <form id="edit-attendee-form">
+                <input type="hidden" id="edit_Attendant_ID">
+                <div class="form-group">
+                    <label for="edit_Event_eval">Evaluation:</label>
+                    <input type="number" id="edit_Event_eval" name="Event_eval" required min="1" max="5">
+                </div>
+                <div class="form-group">
+                    <label for="edit_Event_comment">Comments:</label>
+                    <textarea id="edit_Event_comment" name="Event_comment" required></textarea>
+                </div>
+                <button type="submit" class="btn">Update Attendee</button>
+            </form>
+        </div>
+
+        <div id="error-message" class="error"></div>
+    </div>
+</body>
+</html>

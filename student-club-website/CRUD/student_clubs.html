@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clubs</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+        }
+        header {
+            background-color: #0151a6;
+            color: white;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        header h1 {
+            margin: 0;
+        }
+        nav {
+            display: flex;
+            gap: 15px;
+        }
+        nav a, nav button {
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+            font-size: 1rem;
+        }
+        nav a:hover, nav button:hover {
+            text-decoration: underline;
+        }
+        .container {
+            padding: 20px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        .card img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+        .card h3 {
+            margin: 10px 0;
+        }
+        .card button {
+            background-color: #0151a6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin: 2px 0;
+        }
+        .card button:hover {
+            background-color: #013d7d;
+        }
+        .description {
+            display: none;
+            margin-top: 10px;
+            text-align: left;
+            background-color: #f4f4f9;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .card.show-description .description {
+            display: block;
+        }
+        .dialog {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            width: 80%;
+            height: 80%;
+            overflow-y: auto;
+        }
+        .dialog h3 {
+            margin-top: 0;
+        }
+        .dialog .grid {
+            display: flex;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        .dialog .event-card {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        .dialog .event-card img {
+            width: 300px;
+            height: 300px;
+            object-fit: fill;
+            border-radius: 8px;
+        }
+        .dialog .event-card h4 {
+            margin: 10px 0 5px;
+        }
+        .dialog .event-card p {
+            margin: 5px 0;
+            font-size: 0.9rem;
+            color: #555;
+        }
+        .dialog .event-card button {
+            background-color: #0151a6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        .dialog .event-card button:hover {
+            background-color: #013d7d;
+        }
+        .dialog-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            z-index: 999;
+        }
+        .logout-btn {
+            background-color: #d9534f;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-left: 20px;
+        }
+        .logout-btn:hover {
+            background-color: #c9302c;
+        }
+        .error {
+        text-align: center;
+        margin-top: 50px;
+        color: red;
+        font-size: 1.5rem;
+      }
+    </style>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+
+            const role = localStorage.getItem("role");
+            const id = localStorage.getItem("id");
+                if (role !== "student" || !id) {
+                    document.body.innerHTML = '<div class="error">You have to be logged in as a student to access this page.</div>';
+                    return;
+                }
+            async function fetchClubs() {
+                const studentID = localStorage.getItem("id");
+
+                try {
+                    const response = await fetch("http://127.0.0.1/student-club-website/CRUD/CLUB/readClub.php");
+                    const clubsData = await response.json();
+
+                    const membershipResponse = await fetch(`http://127.0.0.1/student-club-website/CRUD/CLUB_MEMBER/readclubmember.php`);
+                    const membershipData = await membershipResponse.json();
+
+                    if (clubsData.status === 200 && Array.isArray(clubsData.data)) {
+                        const grid = document.querySelector(".grid");
+                        clubsData.data.forEach(club => {
+                            const isMember = membershipData.status === 200 && membershipData.data.some(member => member.Club_ID === club.Club_ID && member.Student_ID === studentID);
+
+                            const card = document.createElement("div");
+                            card.className = "card";
+                            card.innerHTML = `
+                                <img src="${club.Club_logo}" alt="${club.Club_name} Logo">
+                                <h3>${club.Club_name}</h3>
+                                <div class="button-group">
+                                    <button onclick="registerClub(${club.Club_ID})" ${isMember ? 'disabled style="background-color: gray; cursor: not-allowed;"' : ''}>${isMember ? 'Registered' : 'Register'}</button>
+                                    <button onclick="toggleDescription(this)">Description</button>
+                                    <button onclick="showEvents(${club.Club_ID})">Events</button>
+                                </div>
+                                <div class="description">${club.Club_description}</div>
+                            `;
+                            grid.appendChild(card);
+                        });
+                    } else {
+                        document.body.innerHTML = '<div class="error">No clubs found.</div>';
+                    }
+                } catch (error) {
+                    console.error("Error fetching clubs:", error);
+                    document.body.innerHTML = '<div class="error">Failed to load clubs.</div>';
+                }
+            }
+
+            fetchClubs();
+        });
+
+        async function registerClub(clubID) {
+            const studentID = localStorage.getItem("id");
+            const role = "member";
+
+            if (!studentID) {
+                alert("Student ID is missing. Please log in again.");
+                return;
+            }
+
+            try {
+                const checkResponse = await fetch(`http://127.0.0.1/student-club-website/CRUD/CLUB_MEMBER/readclubmember.php?Club_ID=${clubID}`);
+                const checkData = await checkResponse.json();
+
+                if (checkData.status === 200 && checkData.data.some(member => member.Student_ID === studentID)) {
+                    alert("You are already registered in this club.");
+                    return;
+                }
+
+                const response = await fetch("http://127.0.0.1/student-club-website/CRUD/CLUB_MEMBER/createClubMember.php", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        Club_ID: clubID,
+                        Student_ID: studentID,
+                        Member_role: role
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 201) {
+                    alert("Successfully registered for the club!");
+                    location.reload(); 
+                } else {
+                    alert("Failed to register for the club. Please try again.");
+                }
+
+            } catch (error) {
+                console.error("Error registering for club:", error);
+                alert("An error occurred. Please try again later.");
+            }
+        }
+
+        function toggleDescription(button) {
+            const card = button.closest(".card");
+            card.classList.toggle("show-description");
+            button.textContent = card.classList.contains("show-description") ? "Hide Description" : "Show Description";
+        }
+
+        async function showEvents(clubID) {
+            const overlay = document.querySelector(".dialog-overlay");
+            const dialog = document.querySelector(".dialog");
+            const grid = document.querySelector(".dialog .grid");
+
+            overlay.style.display = "block";
+            dialog.style.display = "block";
+            grid.innerHTML = "<div>Loading...</div>";
+
+            try {
+                const response = await fetch(`http://127.0.0.1/student-club-website/CRUD/EVENT/readevent.php?Club_ID=${clubID}`);
+                const data = await response.json();
+
+                if (data.status === 200 && Array.isArray(data.data)) {
+                    const today = new Date();
+                    grid.innerHTML = data.data.map(event => {
+                        const eventDate = new Date(event.Event_date);
+                        const isPast = eventDate < today;
+
+                        return `
+                            <div class="event-card">
+                                <img src="${event.Event_logo || 'default-event.jpg'}" alt="${event.Event_name} Image" height="100px" width="100px">
+                                <h4>${event.Event_name}</h4>
+                                <p>Date: ${event.Event_date}</p>
+                                <p>${event.Event_description}</p>
+                                <button 
+                                    onclick="signUpEvent(${event.Event_ID}, ${clubID})" 
+                                    ${isPast ? 'disabled style="background-color: gray; cursor: not-allowed;"' : ''}
+                                >
+                                    ${isPast ? 'Sign-Up Closed' : 'Sign Up'}
+                                </button>
+                            </div>
+                        `;
+                    }).join("");
+                } else {
+                    grid.innerHTML = "<div>No events found for this club.</div>";
+                }
+            } catch (error) {
+                console.error("Error fetching events:", error);
+                grid.innerHTML = "<div>Failed to load events.</div>";
+            }
+        }
+
+        function closeDialog() {
+            document.querySelector(".dialog-overlay").style.display = "none";
+            document.querySelector(".dialog").style.display = "none";
+        }
+
+        async function signUpEvent(eventID, clubID) {
+            const studentID = localStorage.getItem("id");
+
+            if (!studentID) {
+                alert("Student ID is missing. Please log in again.");
+                return;
+            }
+
+            try {
+                const membershipResponse = await fetch(`http://127.0.0.1/student-club-website/CRUD/CLUB_MEMBER/readclubmember.php?Club_ID=${clubID}`);
+                const membershipData = await membershipResponse.json();
+
+                const membershipRecord = membershipData.status === 200 
+                    ? membershipData.data.find(member => member.Student_ID === studentID) 
+                    : null;
+
+                const attendeesResponse = await fetch(`http://127.0.0.1/student-club-website/CRUD/EVENT_ATTENDEE/readeventattendee.php?Event_ID=${eventID}`);
+                const attendeesData = await attendeesResponse.json();
+
+                const organizersResponse = await fetch(`http://127.0.0.1/student-club-website/CRUD/EVENT_ORGANIZER/readeventorganizer.php?Event_ID=${eventID}`);
+                const organizersData = await organizersResponse.json();
+
+                const isAlreadyRegistered = 
+                    (attendeesData.status === 200 && attendeesData.data.some(attendee => attendee.Student_ID === studentID)) ||
+                    (organizersData.status === 200 && organizersData.data.some(organizer => organizer.Membership_ID === membershipRecord?.Membership_ID));
+
+                const eventButtons = document.querySelectorAll(`button[onclick="signUpEvent(${eventID}, ${clubID})"]`);
+                eventButtons.forEach(button => {
+                    if (isAlreadyRegistered) {
+                        button.textContent = 'Already Registered';
+                        button.disabled = true;
+                        button.style.backgroundColor = 'gray';
+                        button.style.cursor = 'not-allowed';
+                    }
+                });
+
+                if (isAlreadyRegistered) {
+                    return;
+                }
+
+                if (membershipRecord) {
+                    const organizerResponse = await fetch("http://127.0.0.1/student-club-website/CRUD/EVENT_ORGANIZER/createEventOrganizer.php", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                            Event_ID: eventID,
+                            Membership_ID: membershipRecord.Membership_ID
+                        })
+                    });
+
+                    const organizerData = await organizerResponse.json();
+
+                    if (organizerData.status === 201) {
+                        alert("Successfully signed up as an Event Organizer.");
+                    } else {
+                        alert("Failed to sign up as an Event Organizer. Please try again.");
+                    }
+                } else {
+                    const attendeeResponse = await fetch("http://127.0.0.1/student-club-website/CRUD/EVENT_ATTENDEE/createEventAttendee.php", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                            Event_ID: eventID,
+                            Student_ID: studentID,
+                            Event_eval: "N/A",
+                            Event_comment: "N/A"
+                        })
+                    });
+
+                    const attendeeData = await attendeeResponse.json();
+
+                    if (attendeeData.status === 201) {
+                        alert("Successfully signed up as an Event Attendee.");
+                    } else {
+                        alert("Failed to sign up as an Event Attendee. Please try again.");
+                    }
+                }
+            } catch (error) {
+                console.error("Error during sign-up process:", error);
+                alert("An error occurred. Please try again later.");
+            }
+        }
+
+
+        function logout() {
+        localStorage.clear();
+        window.location.href = "login.html";
+    }
+    </script>
+</head>
+<body>
+    <header>
+        <h1>Clubs</h1>
+        <nav>
+            <a href="student_dashboard.html">Home</a>
+            <a href="student_profile.html">Profile</a>
+            <a href="my_clubs.html">My Clubs</a>
+            <a href="student_events.html">Events</a>
+            <li><button id="logout-btn" class="logout-btn" onclick="logout()">Logout</button></li>
+        </nav>
+    </header>
+    <div class="container">
+        <h2>Explore and Register for Clubs</h2>
+        <div class="grid">
+            <!-- clubs go here -->
+        </div>
+    </div>
+    <div class="dialog-overlay" onclick="closeDialog()"></div>
+    <div class="dialog">
+        <h3>Club Events</h3>
+        <div class="grid">
+            <!-- all events go here -->
+        </div>
+        <button class="card" onclick="closeDialog()">Close</button>
+    </div>
+</body>
+</html>

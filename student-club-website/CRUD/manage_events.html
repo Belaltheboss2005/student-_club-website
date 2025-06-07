@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Events</title>
+    <link rel="stylesheet" href="admin_style.css">
+    <script>
+    async function deleteEvent(eventID) {
+        const confirmed = window.confirm("Are you sure you want to delete this event?");
+        if (!confirmed) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`http://127.0.0.1/student-club-website/CRUD/EVENT/deleteEvent.php?Event_ID=${eventID}`, {
+                method: "DELETE"
+            });
+
+            const data = await response.json();
+
+            if (data.status === 200) {
+                window.location.reload();
+            } else {
+                errorMessage.textContent = data.message || "Failed to delete event.";
+            }
+        } catch (error) {
+            console.error("Error deleting event:", error);
+            errorMessage.textContent = "Error deleting event.";
+        }
+    }
+    
+    function manageEventOrganizers(eventID) {
+        localStorage.setItem("eventID", eventID);
+        window.location.href = "manage_event_organizers.html";
+    }
+
+    function manageEventAttendees(eventID) {
+        localStorage.setItem("eventID", eventID);
+        window.location.href = "manage_event_attendees.html";
+    }
+
+    async function openEditModal(event) {
+        const eventID = event.getAttribute("data-id");
+        try {
+            const response = await fetch(`http://127.0.0.1/student-club-website/CRUD/EVENT/readEvent.php?Event_ID=${eventID}`);
+            const data = await response.json();
+
+            if (data.status === 200) {
+                // ITS AN ARRAY??
+                document.getElementById("edit_Event_ID").value = data.data[0].Event_ID;
+                document.getElementById("edit_Event_name").value = data.data[0].Event_name;
+                document.getElementById("edit_Event_description").value = data.data[0].Event_description;
+                document.getElementById("edit_Event_logo").value = data.data[0].Event_logo;
+                document.getElementById("edit_Event_date").value = data.data[0].Event_date;
+
+                document.getElementById("edit-event-modal").style.display = "block";
+            } else {
+                alert("Failed to fetch event details.");
+            }
+        } catch (error) {
+            console.error("Error fetching event details:", error);
+            alert("Error fetching event details.");
+        }
+    }
+
+    async function updateEvent(event) {
+        event.preventDefault();
+
+        const eventID = document.getElementById("edit_Event_ID").value;
+        const eventData = {
+            Event_name: document.getElementById("edit_Event_name").value,
+            Event_description: document.getElementById("edit_Event_description").value,
+            Event_logo: document.getElementById("edit_Event_logo").value,
+            Event_date: document.getElementById("edit_Event_date").value
+        };
+
+        try {
+            const response = await fetch(`http://127.0.0.1/student-club-website/CRUD/EVENT/updateEvent.php?Event_ID=${eventID}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(eventData)
+            });
+
+            const data = await response.json();
+
+            if (data.status === 200) {
+                window.location.reload();
+            } else {
+                alert(data.message || "Failed to update event.");
+            }
+        } catch (error) {
+            console.error("Error updating event:", error);
+            alert("Error updating event.");
+        }
+    }
+
+    function addAdmin() {
+        window.location.href = "add_admin.html";
+    }
+
+    function logout() {
+        localStorage.clear();
+        window.location.href = "login.html";
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        const role = localStorage.getItem("role");
+        if (role !== "admin") {
+            document.body.innerHTML = '<div class="error">You do not have valid authorization to access this page.</div>';
+            return;
+        }
+
+        const eventTable = document.getElementById("event-table-body");
+        const form = document.getElementById("event-form");
+        const errorMessage = document.getElementById("error-message");
+        const clubSelect = document.getElementById("Club_ID");
+
+        async function fetchEvents() {
+            try {
+                const response = await fetch("http://127.0.0.1/student-club-website/CRUD/EVENT/readEvent.php");
+                const data = await response.json();
+
+                if (data.status === 200 && data.data.length > 0) {
+                    eventTable.innerHTML = "";
+                    for (const event of data.data) {
+                        const attendeeResponse = await fetch(`http://127.0.0.1/student-club-website/CRUD/EVENT_ATTENDEE/readEventAttendee.php?Event_ID=${event.Event_ID}`);
+                        const attendeeData = await attendeeResponse.json();
+                        const attendeesCount = (attendeeData.status === 200) ? attendeeData.data.length : 0;
+
+                        const row = document.createElement("tr");
+                        row.innerHTML = `
+                            <td>${event.Event_ID}</td>
+                            <td>${event.Event_name}</td>
+                            <td>${event.Event_description}</td>
+                            <td><img src="${event.Event_logo}" alt="${event.Event_name} Image" height="100px" width="100px"></td>
+                            <td>${event.Event_date}</td>
+                            <td>${attendeesCount}</td> 
+                            <td>
+                                <button class="btn" data-id="${event.Event_ID}" onclick="openEditModal(this)">Edit</button>
+                                <button class="btn" onclick="deleteEvent(${event.Event_ID})">Delete</button>
+                                <button class="btn" onclick="manageEventOrganizers(${event.Event_ID})">Organizers</button>
+                                <button class="btn" onclick="manageEventAttendees(${event.Event_ID})">Attendees</button>
+                            </td>
+                        `;
+                        eventTable.appendChild(row);
+                    }
+                    errorMessage.textContent = "";
+                } else {
+                    eventTable.innerHTML = "";
+                    errorMessage.textContent = "No events found.";
+                }
+            } catch (error) {
+                console.error("Error fetching events:", error);
+                errorMessage.textContent = "Error fetching events.";
+            }
+        }
+
+
+        async function fetchClubs() {
+            try {
+                const response = await fetch("http://127.0.0.1/student-club-website/CRUD/CLUB/readClub.php");
+                const data = await response.json();
+
+                if (data.status === 200 && data.data.length > 0) {
+                    data.data.forEach(club => {
+                        const option = document.createElement("option");
+                        option.value = club.Club_ID;
+                        option.textContent = `${club.Club_ID} - ${club.Club_name}`;
+                        clubSelect.appendChild(option);
+                    });
+                } else {
+                    const option = document.createElement("option");
+                    option.value = "";
+                    option.textContent = "No clubs available";
+                    clubSelect.appendChild(option);
+                }
+            } catch (error) {
+                console.error("Error fetching clubs:", error);
+            }
+        }
+
+        async function addEvent(event) {
+            event.preventDefault();
+
+            const formData = new FormData(form);
+            const eventData = Object.fromEntries(formData.entries());
+
+            try {
+                const response = await fetch("http://127.0.0.1/student-club-website/CRUD/EVENT/createEvent.php", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(eventData)
+                });
+
+                const data = await response.json();
+
+                if (data.status === 201) {
+                    window.location.reload();
+                } else {
+                    errorMessage.textContent = data.message || "Failed to add event.";
+                }
+            } catch (error) {
+                console.error("Error adding event:", error);
+                errorMessage.textContent = "Error adding event.";
+            }
+        }
+
+        form.addEventListener("submit", addEvent);
+        fetchEvents();
+        fetchClubs();
+
+        document.getElementById("edit-event-form").addEventListener("submit", updateEvent);
+    });
+    </script>
+</head>
+<body>
+    <header>
+        <h1>Manage Events</h1>
+        <nav>
+            <a href="admin_dashboard.html">Dashboard</a>
+            <a href="manage_students.html">Manage Students</a>
+            <a href="manage_clubs.html">Manage Clubs</a>
+            <a href="manage_events.html">Manage Events</a>
+            
+            <!-- Admin specific buttons -->
+            <button onclick="addAdmin()">Add Admin</button>
+            <button onclick="logout()">Logout</button>
+        </nav>
+    </header>
+    <div class="container">
+        <h2>Event List</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Description</th>
+                    <th>Logo</th>
+                    <th>Date</th>
+                    <th>Attendees</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="event-table-body">
+            </tbody>
+        </table>
+
+        <!-- Add Event Form -->
+        <h2>Add Event</h2>
+        <form id="event-form">
+            <div class="form-group">
+                <label for="Event_name">Name:</label>
+                <input type="text" id="Event_name" name="Event_name" placeholder="Enter event name" required>
+            </div>
+            <div class="form-group">
+                <label for="Event_description">Description:</label>
+                <input type="text" id="Event_description" name="Event_description" placeholder="Event description" required>
+            </div>
+            <div class="form-group">
+                <label for="Event_logo">Logo URL:</label>
+                <input type="text" id="Event_logo" name="Event_logo" placeholder="Upload logo and enter the URL">
+            </div>
+            <div class="form-group">
+                <label for="Event_date">Date:</label>
+                <input type="date" id="Event_date" name="Event_date" required>
+            </div>
+            <div class="form-group">
+                <label for="Club_ID">Club:</label>
+                <select id="Club_ID" name="Club_ID" required>
+                    <option value="" disabled selected>Select Club</option>
+                </select>
+            </div>
+            <button type="submit" class="btn">Add Event</button>
+        </form>
+        
+        <!-- Edit Event Modal -->
+        <h2>Edit Event</h2>
+        <div id="edit-event-modal" style="display:none;">
+            <form id="edit-event-form">
+                <input type="hidden" id="edit_Event_ID">
+                <div class="form-group">
+                    <label for="edit_Event_name">Name:</label>
+                    <input type="text" id="edit_Event_name" name="Event_name" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit_Event_description">Description:</label>
+                    <input type="text" id="edit_Event_description" name="Event_description" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit_Event_logo">Logo URL:</label>
+                    <input type="text" id="edit_Event_logo" name="Event_logo">
+                </div>
+                <div class="form-group">
+                    <label for="edit_Event_date">Date:</label>
+                    <input type="date" id="edit_Event_date" name="Event_date" required>
+                </div>
+                <button type="submit" class="btn">Update Event</button>
+            </form>
+        </div>
+
+        <div id="error-message" class="error"></div>
+    </div>
+</body>
+</html>

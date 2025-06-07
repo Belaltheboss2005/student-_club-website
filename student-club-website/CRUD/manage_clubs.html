@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Clubs</title>
+    <link rel="stylesheet" href="admin_style.css">
+    <script>
+    async function deleteClub(clubID) {
+        const confirmed = window.confirm("Are you sure you want to delete this club?");
+        if (!confirmed) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`http://127.0.0.1/student-club-website/CRUD/CLUB/deleteClub.php?Club_ID=${clubID}`, {
+                method: "DELETE"
+            });
+
+            const data = await response.json();
+
+            if (data.status === 200) {
+                window.location.reload();
+            } else {
+                errorMessage.textContent = data.message || "Failed to delete club.";
+            }
+        } catch (error) {
+            console.error("Error deleting club:", error);
+            errorMessage.textContent = "Error deleting club.";
+        }
+    }
+
+    function manageClubMembers(clubID) {
+        localStorage.setItem("clubID", clubID);
+        window.location.href = "manage_club_members.html";
+    }
+
+    async function openEditModal(club) {
+        const clubID = club.getAttribute("data-id");
+        try {
+            const response = await fetch(`http://127.0.0.1/student-club-website/CRUD/CLUB/readClub.php?Club_ID=${clubID}`);
+            const data = await response.json();
+
+            if (data.status === 200) {
+                document.getElementById("edit_Club_ID").value = data.data.Club_ID;
+                document.getElementById("edit_Club_name").value = data.data.Club_name;
+                document.getElementById("edit_Club_description").value = data.data.Club_description;
+                document.getElementById("edit_Club_logo").value = data.data.Club_logo;
+
+                document.getElementById("edit-club-modal").style.display = "block";
+            } else {
+                alert("Failed to fetch club details.");
+            }
+        } catch (error) {
+            console.error("Error fetching club details:", error);
+            alert("Error fetching club details.");
+        }
+    }
+
+    async function updateClub(event) {
+        event.preventDefault();
+
+        const clubID = document.getElementById("edit_Club_ID").value;
+        const clubData = {
+            Club_name: document.getElementById("edit_Club_name").value,
+            Club_description: document.getElementById("edit_Club_description").value,
+            Club_logo: document.getElementById("edit_Club_logo").value
+        };
+
+        try {
+            const response = await fetch(`http://127.0.0.1/student-club-website/CRUD/CLUB/updateclub.php?Club_ID=${clubID}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(clubData)
+            });
+
+            const data = await response.json();
+
+            if (data.status === 200) {
+                window.location.reload();
+            } else {
+                alert(data.message || "Failed to update club.");
+            }
+        } catch (error) {
+            console.error("Error updating club:", error);
+            alert("Error updating club.");
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        const role = localStorage.getItem("role");
+        if (role !== "admin") {
+            document.body.innerHTML = '<div class="error">You do not have valid authorization to access this page.</div>';
+            return;
+        }
+
+        const clubTable = document.getElementById("club-table-body");
+        const form = document.getElementById("club-form");
+        const errorMessage = document.getElementById("error-message");
+
+        async function fetchClubs() {
+            try {
+                const response = await fetch("http://127.0.0.1/student-club-website/CRUD/CLUB/readClub.php");
+                const data = await response.json();
+
+                if (data.status === 200 && data.data.length > 0) {
+                    clubTable.innerHTML = "";
+                    data.data.forEach(club => {
+                        const row = document.createElement("tr");
+                        row.innerHTML = `
+                            <td>${club.Club_ID}</td>
+                            <td>${club.Club_name}</td>
+                            <td>${club.Club_description}</td>
+                            <td><img src="${club.Club_logo}" alt="${club.Club_name}" width="100" height="100"></td>
+
+                            <td>
+                                <button class="btn" data-id="${club.Club_ID}" onclick="openEditModal(this)">Edit</button>
+                                <button class="btn" onclick="deleteClub(${club.Club_ID})">Delete</button>
+                                <button class="btn" onclick="manageClubMembers(${club.Club_ID})">Members</button>
+                            </td>
+                        `;
+                        clubTable.appendChild(row);
+                    });
+                    errorMessage.textContent = "";
+                } else {
+                    clubTable.innerHTML = "";
+                    errorMessage.textContent = "No clubs found.";
+                }
+            } catch (error) {
+                console.error("Error fetching clubs:", error);
+                errorMessage.textContent = "Error fetching clubs.";
+            }
+        }
+
+        async function addClub(event) {
+            event.preventDefault();
+
+            const formData = new FormData(form);
+            const clubData = Object.fromEntries(formData.entries());
+
+            try {
+                const response = await fetch("http://127.0.0.1/student-club-website/CRUD/CLUB/createClub.php", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(clubData)
+                });
+
+                const data = await response.json();
+
+                if (data.status === 201) {
+                    window.location.reload();
+                } else {
+                    errorMessage.textContent = data.message || "Failed to add club.";
+                }
+            } catch (error) {
+                console.error("Error adding club:", error);
+                errorMessage.textContent = "Error adding club.";
+            }
+        }
+
+        form.addEventListener("submit", addClub);
+        fetchClubs();
+
+        const editClubForm = document.getElementById("edit-club-form");
+
+        editClubForm.addEventListener("submit", updateClub);
+    });
+
+    function addAdmin() {
+        window.location.href = "add_admin.html";
+    }
+
+    function logout() {
+        localStorage.clear();
+        window.location.href = "login.html";
+    }
+
+   </script>
+</head>
+<body>
+    <header>
+        <h1>Manage Clubs</h1>
+        <nav>
+            <a href="admin_dashboard.html">Dashboard</a>
+            <a href="manage_students.html">Manage Students</a>
+            <a href="manage_clubs.html">Manage Clubs</a>
+            <a href="manage_events.html">Manage Events</a>
+            
+            <button onclick="addAdmin()">Add Admin</button>
+            <button onclick="logout()">Logout</button>
+        </nav>
+    </header>
+    <div class="container">
+        <h2>Club List</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Description</th>
+                    <th>Image link</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="club-table-body">
+            </tbody>
+        </table>
+
+        <h2>Add Club</h2>
+        <form id="club-form">
+            <div class="form-group">
+                <label for="Club_name">Name:</label>
+                <input type="text" id="Club_name" name="Club_name" placeholder="Enter Club name" required>
+            </div>
+            <div class="form-group">
+                <label for="Club_description">Description:</label>
+                <input type="text" id="Club_description" name="Club_description" placeholder="Description" required>
+            </div>
+            <div class="form-group">
+                <label for="Club_logo">Image URL:</label>
+                <input type="text" id="Club_logo" name="Club_logo" placeholder="Upload on drive and enter the URL">
+            </div> 
+            <button type="submit" class="btn">Add Club</button>
+        </form>
+
+        <h2>Edit Club</h2>
+        <div id="edit-club-modal" style="display:none;">
+            <form id="edit-club-form">
+                <input type="hidden" id="edit_Club_ID">
+                <div class="form-group">
+                    <label for="edit_Club_name">Name:</label>
+                    <input type="text" id="edit_Club_name" name="Club_name" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit_Club_description">Description:</label>
+                    <input type="text" id="edit_Club_description" name="Club_description" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit_Club_logo">Logo URL:</label>
+                    <input type="text" id="edit_Club_logo" name="Club_logo">
+                </div>
+                <button type="submit" class="btn">Update Club</button>
+            </form>
+        </div>
+
+        <div id="error-message" class="error"></div>
+    </div>
+</body>
+</html>

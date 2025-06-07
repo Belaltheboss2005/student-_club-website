@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Students</title>
+    <link rel="stylesheet" href="admin_style.css">
+    <script>
+        async function deleteStudent(studentID) {
+            const confirmed = window.confirm("Are you sure you want to delete this student?");
+            if (!confirmed) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`http://127.0.0.1/student-club-website/CRUD/STUDENT/deleteStudent.php?Student_ID=${studentID}`, {
+                    method: "DELETE"
+                });
+
+                const data = await response.json();
+
+                if (data.status === 200) {
+                    window.location.reload();
+                } else {
+                    errorMessage.textContent = data.message || "Failed to delete student.";
+                }
+            } catch (error) {
+                console.error("Error deleting student:", error);
+                errorMessage.textContent = "Error deleting student.";
+            }
+        }
+
+        async function openEditModal(student) {
+            const studentID = student.getAttribute("data-id");
+            try {
+                const response = await fetch(`http://127.0.0.1/student-club-website/CRUD/STUDENT/readStudent.php?Student_ID=${studentID}`);
+                const data = await response.json();
+
+                if (data.status === 200) {
+                    document.getElementById("edit_Student_ID").value = data.data.Student_ID;
+                    document.getElementById("edit_Student_name").value = data.data.Student_name;
+                    document.getElementById("edit_Student_username").value = data.data.Student_username;
+                    document.getElementById("edit_Student_img").value = data.data.Student_img;
+                    document.getElementById("edit_Student_phone").value = data.data.Student_phone;
+                    document.getElementById("edit_Student_year").value = data.data.Student_year;
+                    document.getElementById("edit_Student_pass").value = data.data.Student_pass;
+
+                    document.getElementById("edit-student-modal").style.display = "block";
+                } else {
+                    alert("Failed to fetch student details.");
+                }
+            } catch (error) {
+                console.error("Error fetching student details:", error);
+                alert("Error fetching student details.");
+            }
+        }
+
+        async function updateStudent(event) {
+            event.preventDefault();
+
+            const studentID = document.getElementById("edit_Student_ID").value;
+            const studentData = {
+                Student_name: document.getElementById("edit_Student_name").value,
+                Student_username: document.getElementById("edit_Student_username").value,
+                Student_img: document.getElementById("edit_Student_img").value,
+                Student_phone: document.getElementById("edit_Student_phone").value,
+                Student_year: document.getElementById("edit_Student_year").value,
+                Student_pass: document.getElementById("edit_Student_pass").value
+            };
+
+            try {
+                const response = await fetch(`http://127.0.0.1/student-club-website/CRUD/STUDENT/updateStudent.php?Student_ID=${studentID}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(studentData)
+                });
+
+                const data = await response.json();
+
+                if (data.status === 200) {
+                    window.location.reload();
+                } else {
+                    alert(data.message || "Failed to update student.");
+                }
+            } catch (error) {
+                console.error("Error updating student:", error);
+                alert("Error updating student.");
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+            const role = localStorage.getItem("role");
+            if (role !== "admin") {
+                document.body.innerHTML = '<div class="error">You do not have valid authorization to access this page.</div>';
+                return;
+            }
+
+            const studentTable = document.getElementById("student-table-body");
+            const form = document.getElementById("student-form");
+            const errorMessage = document.getElementById("error-message");
+
+            async function fetchStudents() {
+                try {
+                    const response = await fetch("http://127.0.0.1/student-club-website/CRUD/STUDENT/readStudent.php");
+                    const data = await response.json();
+
+                    if (data.status === 200 && data.data.length > 0) {
+                        studentTable.innerHTML = "";
+                        data.data.forEach(student => {
+                            const row = document.createElement("tr");
+                            row.innerHTML = `
+                                <td>${student.Student_ID}</td>
+                                <td>${student.Student_name}</td>
+                                <td>${student.Student_username}</td>
+                                <td>${student.Student_phone}</td>
+                                <td>${student.Student_year}</td>
+                                <td>
+                                    <button class="btn" data-id="${student.Student_ID}" onclick="openEditModal(this)">Edit</button>
+                                    <button class="btn" onclick="deleteStudent(${student.Student_ID})">Delete</button>
+                                </td>
+                            `;
+                            studentTable.appendChild(row);
+                        });
+                        errorMessage.textContent = "";
+                    } else {
+                        studentTable.innerHTML = "";
+                        errorMessage.textContent = "No students found.";
+                    }
+                } catch (error) {
+                    console.error("Error fetching students:", error);
+                    errorMessage.textContent = "Error fetching students.";
+                }
+            }
+
+            async function addStudent(event) {
+                event.preventDefault();
+
+                const formData = new FormData(form);
+                const studentData = Object.fromEntries(formData.entries());
+
+                try {
+                    const response = await fetch("http://127.0.0.1/student-club-website/CRUD/STUDENT/createStudent.php", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(studentData)
+                    });
+
+                    const data = await response.json();
+
+                    if (data.status === 201) {
+                        window.location.reload();
+                    } else {
+                        errorMessage.textContent = data.message || "Failed to add student.";
+                    }
+                } catch (error) {
+                    console.error("Error adding student:", error);
+                    errorMessage.textContent = "Error adding student.";
+                }
+            }
+
+            form.addEventListener("submit", addStudent);
+            fetchStudents();
+
+            document.getElementById("edit-student-form").addEventListener("submit", updateStudent);
+        });
+        function addAdmin() {
+            window.location.href = "add_admin.html";
+        }
+
+        function logout() {
+            localStorage.clear();
+            window.location.href = "login.html";
+        }
+    </script>
+</head>
+<body>
+    <header>
+        <h1>Manage Students</h1>
+        <nav>
+            <a href="admin_dashboard.html">Dashboard</a>
+            <a href="manage_students.html">Manage Students</a>
+            <a href="manage_clubs.html">Manage Clubs</a>
+            <a href="manage_events.html">Manage Events</a>
+            
+            <button onclick="addAdmin()">Add Admin</button>
+            <button onclick="logout()">Logout</button>
+        </nav>
+    </header>
+    <div class="container">
+        <h2>Student List</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Username</th>
+                    <th>Phone</th>
+                    <th>Year</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="student-table-body">
+            </tbody>
+        </table>
+
+        <h2>Add Student</h2>
+        <form id="student-form">
+            <div class="form-group">
+                <label for="Student_name">Name:</label>
+                <input type="text" id="Student_name" name="Student_name" placeholder="Enter your name" required>
+            </div>
+            <div class="form-group">
+                <label for="Student_username">Username:</label>
+                <input type="text" id="Student_username" name="Student_username" placeholder="username" required>
+            </div>
+            <div class="form-group">
+                <label for="Student_img">Image URL:</label>
+                <input type="text" id="Student_img" name="Student_img" placeholder="Upload on drive and enter the URL">
+            </div>
+            <div class="form-group">
+                <label for="Student_phone">Phone:</label>
+                <input type="text" id="Student_phone" name="Student_phone" required maxlength="11" 
+                       pattern="^\d{11}$" title="Phone number must be exactly 11 digits" placeholder="Enter 11-digit phone number">
+            </div>
+            <div class="form-group">
+                <label for="Student_year">Year:</label>
+                <select id="Student_year" name="Student_year" required>
+                    <option value="" disabled selected>Select Year</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="Student_pass">Password:</label>
+                <input type="password" id="Student_pass" name="Student_pass" placeholder="Password" required>
+            </div>
+            <button type="submit" class="btn">Add Student</button>
+        </form>
+
+        <h2>Edit Student</h2>
+        <div id="edit-student-modal" style="display:none;">
+            <form id="edit-student-form">
+                <input type="hidden" id="edit_Student_ID">
+                <div class="form-group">
+                    <label for="edit_Student_name">Name:</label>
+                    <input type="text" id="edit_Student_name" name="Student_name" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit_Student_username">Username:</label>
+                    <input type="text" id="edit_Student_username" name="Student_username" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit_Student_img">Image URL:</label>
+                    <input type="text" id="edit_Student_img" name="Student_img">
+                </div>
+                <div class="form-group">
+                    <label for="edit_Student_phone">Phone:</label>
+                    <input type="text" id="edit_Student_phone" name="Student_phone" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit_Student_year">Year:</label>
+                    <select id="edit_Student_year" name="Student_year" required>
+                        <option value="" disabled selected>Select Year</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="edit_Student_pass">Password:</label>
+                    <input type="password" id="edit_Student_pass" name="Student_pass" required>
+                </div>
+                <button type="submit" class="btn">Update Student</button>
+            </form>
+        </div>
+
+        <div id="error-message" class="error"></div>
+    </div>
+</body>
+</html>
